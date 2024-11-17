@@ -6,11 +6,14 @@ module "vpc" {
 
   azs             = ["ap-northeast-2a", "ap-northeast-2b"]
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]  # change Name Tags 
 
   enable_nat_gateway     = true
   single_nat_gateway     = false 
   one_nat_gateway_per_az = true  
+
+  # Add the 'map_public_ip_on_launch' setting for public subnets
+  map_public_ip_on_launch = true  # Enable auto-assign public IPv4
 
   tags = {
     Terraform    = "true"
@@ -30,14 +33,14 @@ resource "aws_ec2_tag" "private_subnet_b_tag" {
   value          = "demo-pvt-sn-1b"
 }
 
-resource "aws_ec2_tag" "public_subnet_a_tag" {
-  resource_id    = module.vpc.public_subnets[0]
-  key            = "Name"
-  value          = "demo-pub-sn-1a"
-}
-
-resource "aws_ec2_tag" "public_subnet_b_tag" {
-  resource_id    = module.vpc.public_subnets[1]
-  key            = "Name"
-  value          = "demo-pub-sn-1b"
-}
+# resource "aws_ec2_tag" "public_subnet_a_tag" {
+#   resource_id    = module.vpc.public_subnets[0]
+#   key            = "Name"
+#   value          = "demo-pub-sn-1a"
+# }
+# 
+# resource "aws_ec2_tag" "public_subnet_b_tag" {
+#   resource_id    = module.vpc.public_subnets[1]
+#   key            = "Name"
+#   value          = "demo-pub-sn-1b"
+# }
