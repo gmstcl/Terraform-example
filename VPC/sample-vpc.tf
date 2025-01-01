@@ -1,8 +1,3 @@
-# Provider Configuration
-provider "aws" {
-  region = var.aws_region 
-}
-
 # Variables
 variable "aws_region" {
   default = "ap-northeast-2"
