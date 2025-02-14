@@ -93,7 +93,10 @@ module "ec2_instance" {
 
   name = "${var.project_name}-${var.ec2_name}"
 
+<<<<<<< HEAD
   ami                    = data.aws_ami.this.id
+=======
+>>>>>>> ef537c20499f60cd9e1ba053644b13e6bfd42d3b
   instance_type          = var.instance_type
   key_name               = aws_key_pair.keypair.key_name
   monitoring             = var.monitoring
@@ -114,10 +117,13 @@ module "ec2_instance" {
 
   user_data = <<-EOF
               #!/bin/bash
+<<<<<<< HEAD
               curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.4/2025-01-10/bin/darwin/amd64/kubectl.sha256
               chmod +x kubectl 
               mv kubectl /usr/bin
               echo 'alias k=kubectl' >>~/.bashrc
               source ~/.bashrc
+=======
+>>>>>>> ef537c20499f60cd9e1ba053644b13e6bfd42d3b
               EOF
 }
