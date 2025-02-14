@@ -4,41 +4,41 @@ resource "tls_private_key" "key" {
 }
 
 resource "aws_key_pair" "keypair" {
-  key_name   = "test.pem"
+  key_name   = var.key_name
   public_key = tls_private_key.key.public_key_openssh
 }
 
 resource "local_file" "bastion_local" {
-  filename = "${pathexpand("~\\Downloads\\test.pem")}"
+  filename = "${pathexpand("~\\Downloads\\${var.key_name}")}"
   content  = tls_private_key.key.private_key_pem
 }
 
 resource "aws_security_group" "ec2_secgroup" {
-  name   = "${var.project_name}-bastion-sg"
+  name   = "${var.project_name}-${var.security_groups_ec2_name}"
   vpc_id = module.vpc.vpc_id
   description = "Allow inbound traffic from port 443, to the VPN"
  
   ingress {
-   protocol         = "tcp"
-   from_port        = 22
-   to_port          = 22
+   protocol         = var.ec2_ingress.protocol
+   from_port        = var.ec2_ingress.from_port
+   to_port          = var.ec2_ingress.to_port
    cidr_blocks      = ["${chomp(data.http.myip.response_body)}/32"]
   }
  
   egress {
-   protocol         = "-1"
-   from_port        = 0
-   to_port          = 0
-   cidr_blocks      = ["0.0.0.0/0"]
+   protocol         = var.ec2_egress.protocol
+   from_port        = var.ec2_egress.from_port
+   to_port          = var.ec2_egress.to_port
+   cidr_blocks      = var.ec2_egress.cidr_blocks
   }
 
   tags = {
-    Name = "${var.project_name}-bastion-sg"
+    Name = "${var.project_name}-${var.security_groups_ec2_name}"
   }
 }
 
 resource "aws_iam_role" "ec2_role" {
-  name = "${var.project_name}-bastion-role"
+  name = "${var.project_name}-${var.aws_iam_role_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -54,7 +54,7 @@ resource "aws_iam_role" "ec2_role" {
   })
 
   tags = {
-    Name        = "${var.project_name}-bastion-role"
+    Name        = "${var.project_name}-${var.aws_iam_role_name}"
     Environment = "dev"
   }
 }
@@ -75,17 +75,37 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   }
 }
 
+data "aws_ami" "this" {
+  most_recent = true
+  owners      = ["amazon"]
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023*"]
+  }
+}
+
 module "ec2_instance" {
   source  = "terraform-aws-modules/ec2-instance/aws"
 
-  name = "single-instance"
+  name = "${var.project_name}-${var.ec2_name}"
 
-  instance_type          = "t2.micro"
+  ami                    = data.aws_ami.this.id
+  instance_type          = var.instance_type
   key_name               = aws_key_pair.keypair.key_name
-  monitoring             = true
+  monitoring             = var.monitoring
   vpc_security_group_ids = [aws_security_group.ec2_secgroup.id]
   subnet_id              = element(module.vpc.public_subnets, 0)
   iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile.name
+
+  metadata_options = {
+    "http_endpoint": "enabled",
+    "http_put_response_hop_limit": 2,
+    "http_token": "required"
+  }
 
   tags = {
     Terraform   = "true"
@@ -94,7 +114,10 @@ module "ec2_instance" {
 
   user_data = <<-EOF
               #!/bin/bash
-              dnf install -y httpd
-              systemctl start httpd
+              curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.31.4/2025-01-10/bin/darwin/amd64/kubectl.sha256
+              chmod +x kubectl 
+              mv kubectl /usr/bin
+              echo 'alias k=kubectl' >>~/.bashrc
+              source ~/.bashrc
               EOF
 }
